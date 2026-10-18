@@ -1,165 +1,101 @@
-# SII-MB · Primera aplicación local (V0.1.0)
+# SII-MB · Núcleo funcional local V0.2
 
-**Sistema Integral de Indicadores de Metrobús** · Entregable inicial de código, sin repositorio remoto ni servicios cloud creados.
+Sistema Integral de Indicadores de Metrobús. Basado en el ZIP V0.1 recibido el 18/10/2026. Solo datos sintéticos; sin catálogo institucional precargado.
 
-## Qué está implementado de verdad
+## Implementado
 
-- API REST con FastAPI y documentación interactiva (`/docs`).
-- Persistencia local con SQLite y modelo separado para una identidad de indicador estable.
-- Alta, consulta, búsqueda, paginación y edición de **fichas en borrador**.
-- Interfaz en Next.js y TypeScript: inicio, inventario, alta, detalle y edición.
-- Validación del lado del servidor; el cliente no puede autoproclamarse aprobado.
-- Pruebas automatizadas para la API.
-- Base preparada para reemplazar SQLite por PostgreSQL sin acoplar la interfaz al almacenamiento.
+- Indicadores dinámicos con identidad estable, dimensiones, edición, búsqueda, desactivación/reactivación y relaciones. Desactivar no es desistir institucionalmente.
+- CSV UTF-8: inspección previa, tipos configurables, vista previa, faltantes y validación. Instantáneas inmutables con SHA-256. Hasta 1 MB, 10 000 filas, 50 columnas.
+- Métodos inmutables versionados: conteo, suma, promedio, mínimo, máximo, razón de sumas y expresiones compuestas con operadores permitidos. Sin ejecución de código de usuarios.
+- Unidad del método, multiplicador, agrupación, granularidad temporal, filtros, periodo, vigencia y política explícita de faltantes/cero.
+- Ejecuciones históricas con parámetros, fuente, método, huella y motor. Reproducción como nueva ejecución.
+- Gráficas, tablas, rankings, resumen, comparación de ejecuciones, tableros personales persistidos, CSV protegido e impresión de reportes.
+- Autenticación por sesiones, roles y alcances independientes de indicadores/fuentes, administración de usuarios, revocación y auditoría.
+- Migraciones Alembic, pruebas automatizadas, dependencias resueltas y preparación Docker Compose/PostgreSQL.
 
-**No está implementado:** autenticación, permisos, fuentes de datos, fórmulas, cálculo, aprobación institucional, auditoría integral, observabilidad, gestión de evidencias, notificaciones y despliegue productivo. Los módulos futuros se muestran como *Próximo*, no como botones funcionales.
+**Los métodos son borradores, los resultados son provisionales y no autorizan usos institucionales.** El núcleo local está implementado; la plataforma integral todavía no se declara terminada ni apta para datos reales. [Plan y pendientes](docs/PLAN_IMPLEMENTACION.md).
 
-> **Entorno de desarrollo exclusivamente.** La API no incorpora autenticación. Mantener ambos servicios en `127.0.0.1`, no abrir puertos al exterior, no utilizar datos institucionales, confidenciales o personales.
+## Windows: inicio local sin Docker
 
-## Requisitos previos
+Requisitos: Python 3.12, Node.js 24, npm; Edge para las pruebas de navegador.
 
-- Python 3.11 o superior (probado con 3.13).
-- Node.js 22 LTS (probado con 22.16 en el entorno de generación).
-- npm 10 o superior.
-- Git instalado, solo si deseas inicializar un repositorio *local*.
-
-No necesitas Docker, PostgreSQL, cuenta Google Cloud ni conexión a BigQuery para iniciar. `npm install` y la instalación Python sí requieren conseguir las dependencias en tu equipo.
-
-## Iniciar en Windows (PowerShell)
-
-Abre dos terminales en el directorio extraído:
-
-**Terminal 1 · API**
+Desde la raíz del proyecto, primera ejecución:
 
 ```powershell
-cd backend
-py -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements-dev.txt
-uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+.\scripts\start-local.ps1 -Install -CreateAdmin
 ```
 
-**Terminal 2 · Interfaz**
+La contraseña se solicita en la terminal, mínimo 12 caracteres; no hay contraseña predeterminada. Usuario inicial: admin. Ejecuciones posteriores:
 
 ```powershell
-cd frontend
-npm install
-Copy-Item .env.local.example .env.local
-npm run dev
+.\scripts\start-local.ps1
 ```
 
-Si PowerShell impide activar el entorno, utiliza `backend\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000` desde `backend/` sin cambiar políticas globales.
+Abre http://127.0.0.1:3000 . API: http://127.0.0.1:8000/docs . Usa el mismo host para interfaz/API; no mezcles localhost con 127.0.0.1. Ctrl+C detiene los servicios del script. La base vacía se crea en backend/data/sii_mb.db.
 
-## Iniciar en macOS / Linux
-
-**Terminal 1 · API**
+### Inicio manual / Linux / macOS
 
 ```bash
 cd backend
-python3 -m venv .venv
+python3.12 -m venv .venv
 source .venv/bin/activate
-python -m pip install -r requirements-dev.txt
-uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+python -m pip install -r requirements-lock.txt
+python -m app.manage create-admin
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-**Terminal 2 · Interfaz**
+En otra terminal:
 
 ```bash
 cd frontend
-npm install
-cp .env.local.example .env.local
+npm ci
 npm run dev
 ```
 
-Abrir:
+En Windows usa el ejecutable backend\.venv\Scripts\python.exe sin activar el entorno si lo prefieres. Si Python 3.12 no está instalado, instala esa versión o crea el entorno con una versión compatible y vuelve a verificar las dependencias.
 
-- **Aplicación:** http://127.0.0.1:3000
-- **Documentación API:** http://127.0.0.1:8000/docs
-- **Estado API:** http://127.0.0.1:8000/api/v1/health
+## Docker Compose / PostgreSQL
 
-## Primera prueba de extremo a extremo
+**Preparado, pendiente de ejecución en un equipo con Docker.** No se instaló Docker ni se desplegó infraestructura externa.
 
-1. Abre la aplicación en tu navegador y confirma que la API aparece como **Conectada**.
-2. Entra a **Indicadores → Nuevo indicador**.
-3. Ingresa un nombre, una definición de al menos 10 caracteres y una unidad.
-4. Guarda. Verifica que la aplicación abre la ficha con un código `IND-...`.
-5. Regresa al inventario, busca por nombre y edita la ficha.
-6. Detén y reinicia la API: la ficha debe seguir existiendo en `backend/data/sii_mb.db`.
+1. Copia .env.example a .env.
+2. Define SII_MB_DB_PASSWORD (aleatoria, caracteres seguros para URL) y SII_MB_ADMIN_PASSWORD (distinta, al menos 12 caracteres).
+3. Ejecuta `docker compose up --build`.
+4. Abre http://127.0.0.1:3000 . PostgreSQL solo es accesible en la red interna y los puertos web se vinculan a loopback.
 
-**La base arranca vacía**. No es requisito cargar los 46 registros previos: cada indicador puede incorporarse posteriormente desde la interfaz.
+Prueba de integración: `docker compose --profile test run --rm test`. Utiliza un esquema temporal propio. Detener: `docker compose down`, conservando el volumen. No uses `down -v` para conservar los datos.
 
-## Ejecutar pruebas
+## Primer flujo verificable
 
-En `backend/`, con el entorno activado:
+1. Inicia sesión; comprueba que Indicadores está vacío.
+2. En Fuentes pulsa Preparar ejemplo sintético, revisa tipos y guarda.
+3. Crea un indicador ficticio con unidad % y dimensiones fecha, grupo.
+4. En su ficha selecciona la fuente, razón de sumas, numerador valor, denominador base, multiplicador 100, fecha fecha y agrupación grupo.
+5. Guarda versión y ejecuta: total esperado **81.666666… %**, resultado de 245 / 300 × 100.
+6. Filtra grupo = A: **85 %**. Los límites de fecha son inclusivos.
+7. Modifica el método y guarda otra versión. Los resultados anteriores conservan su definición y procedencia.
+8. En Resultados consulta, compara, reproduce y exporta. En Tableros añade componentes, guarda y recarga.
 
-```bash
-python -m pytest -q
+El ejemplo solo prepara datos en el formulario: nada se precarga al arrancar.
+
+## Pruebas
+
+```powershell
+.\scripts\verify.ps1
 ```
 
-En `frontend/`, tras `npm install`:
+Por separado: `python -m pytest -q` desde backend; `npm run typecheck`, `npm run build`, `npx playwright test` desde frontend. E2E inicia sus propios servidores 8100/3100 y una base sintética independiente.
 
-```bash
-npm run typecheck
-npm run build
-```
+Linux/Chromium: `npx playwright install chromium` y SII_MB_BROWSER_CHANNEL=chromium. PostgreSQL: SII_MB_TEST_POSTGRES_URL debe apuntar a una base local dedicada a pruebas; se crea/elimina únicamente un esquema test_sii_UUID. E2E puede usar SII_MB_TEST_DATABASE_URL hacia una base vacía de pruebas; nunca apuntar a una base de usuarios reales.
 
-## Ejemplo de uso de API
+GitHub Actions requiere ejecución manual; publicar código no activa trabajos ni despliegues.
 
-```bash
-curl -X POST http://127.0.0.1:8000/api/v1/indicators \
-  -H 'Content-Type: application/json' \
-  -d '{"name":"Intervalo observado (prueba)","definition":"Tiempo entre dos pasos consecutivos en una parada.","unit":"min","domain":"Operación"}'
-```
+## Documentación
 
-```bash
-curl 'http://127.0.0.1:8000/api/v1/indicators?q=intervalo'
-```
+[Hitos](docs/PLAN_IMPLEMENTACION.md) · [Verificación](docs/VERIFICACION_V02.md) · [Motor](docs/MOTOR.md) · [Operación](docs/OPERACION.md) · [Reglas originales](docs/REGLAS_MAESTRAS.md) · [Instrucciones originales](docs/INSTRUCCIONES_DESARROLLO.md) · [Trazabilidad DEC](docs/TRAZABILIDAD_DEC.md).
 
-Solo se aceptan campos explícitos. `status` es controlado por el servidor y será `draft`. Las personas usuarias no pueden aprobar un indicador desde esta API.
+Arquitectura: Next.js/React/TypeScript; FastAPI/SQLAlchemy; Alembic; SQLite para pruebas locales, PostgreSQL como entorno de referencia preparado. Gráficas SVG accesibles sin una biblioteca externa adicional. backend/app/connectors.py define la frontera para adaptadores futuros de confianza.
 
-## Organización
+## Alcance pendiente
 
-```text
-sii-mb-local-v0.1/
-├── backend/
-│   ├── app/
-│   │   ├── main.py              # Aplicación / CORS restringido
-│   │   ├── db.py                # Conexión y sesión a DB
-│   │   ├── models.py            # Entidad Indicator
-│   │   ├── schemas.py           # Contrato de datos
-│   │   └── routers/indicators.py
-│   ├── tests/
-│   └── requirements*.txt
-├── frontend/
-│   ├── app/                    # Rutas Next.js
-│   ├── components/
-│   ├── lib/api.ts              # Cliente API tipado
-│   └── package.json
-├── docs/
-│   ├── PLAN_INMEDIATO.md
-│   ├── DECISIONES_Y_ALCANCE.md
-│   └── CRITERIOS_ACEPTACION.md
-└── .gitignore
-```
-
-## Base de datos
-
-Se utiliza **SQLite por defecto, únicamente para desarrollo local**. No hay datos ficticios precargados. La identidad del indicador es independiente de su nombre, de su área y de los tableros, conforme al diseño institucional previo.
-
-El código permite indicar `SII_MB_DATABASE_URL` para un motor PostgreSQL mediante SQLAlchemy, si se instala un controlador apropiado. Ese camino aún **no está probado ni desplegado**. Las migraciones con Alembic, los respaldos y el control de versiones metodológicas se incluirán antes de un entorno multiusuario.
-
-## GitHub: ningún recurso externo creado
-
-Este ZIP **no contiene un repositorio remoto** ni credenciales. Si deseas, posteriormente puedes iniciar historial Git localmente:
-
-```bash
-git init
-git add .
-git commit -m "chore: bootstrap sii-mb local v0.1"
-```
-
-**No ejecutar `git remote add` ni `git push` todavía.** La creación del repositorio privado en GitHub quedará sujeta a autorización explícita de nombre, propietario y controles de acceso.
-
-## Diseño vs. funcionalidad
-
-Las decisiones institucionales DEC-001 a DEC-051 siguen siendo el marco de referencia; **no** están todas implementadas. Los detalles finos de gobernanza/eventos se posponen y no bloquean el desarrollo del núcleo funcional. Consultar `docs/` para siguiente incremento.
+PostgreSQL/Compose ejecutados, restauración comprobada, carga/concurrencia, recuperación de cuentas, HTTPS/SSO y revisión de seguridad institucional. Gobernanza avanzada EM/EV/EVT/PO y criticidad se incorporarán progresivamente. Tampoco se incluyen conectores institucionales reales, trabajos asíncronos ni tableros compartidos. El rol técnico admin no confiere autoridad metodológica institucional. No se han usado datos reales ni desplegado servicios en nube.

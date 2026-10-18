@@ -1,0 +1,48 @@
+name: Manual verification
+on: workflow_dispatch
+permissions:
+  contents: read
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: sii_test
+          POSTGRES_USER: sii_test
+          POSTGRES_PASSWORD: synthetic-ci-password
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U sii_test" --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r backend/requirements-lock.txt
+      - run: python -m pytest -q
+        working-directory: backend
+        env:
+          SII_MB_TEST_POSTGRES_URL: postgresql+psycopg://sii_test:synthetic-ci-password@127.0.0.1:5432/sii_test
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m venv backend/.venv
+      - run: backend/.venv/bin/pip install -r backend/requirements-lock.txt
+      - run: npm ci
+        working-directory: frontend
+      - run: npm run typecheck && npm run build
+        working-directory: frontend
+      - run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - run: npx playwright test
+        working-directory: frontend
+        env:
+          SII_MB_BROWSER_CHANNEL: chromium

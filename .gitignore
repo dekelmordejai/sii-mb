@@ -21,3 +21,6 @@ frontend/*.tsbuildinfo
 .DS_Store
 .vscode/
 .idea/
+frontend/test-results/
+frontend/playwright-report/
+*.log

@@ -16,12 +16,12 @@ export default function Home() {
     <div className="stat-grid">
       <div className="stat-card"><p>Indicadores registrados</p><strong>{count === null ? "—" : count}</strong><small>Todos son borradores en este hito</small></div>
       <div className="stat-card"><p>API local</p><strong className={status === "connected" ? "good" : "not-ready"}>{status === "connected" ? "Conectada" : status === "loading" ? "..." : "Sin conexión"}</strong><small>{status === "offline" ? "Inicia el servidor FastAPI" : "127.0.0.1:8000"}</small></div>
-      <div className="stat-card"><p>Hito actual</p><strong>M0–M1</strong><small>Administración básica de indicadores</small></div>
+      <div className="stat-card"><p>Entorno</p><strong>Local</strong><small>Datos sintéticos · acceso autorizado</small></div>
     </div>
-    <section className="panel"><div className="panel-header"><div><h2>Primer flujo disponible</h2><p className="muted">Crear, consultar, buscar y editar fichas en borrador.</p></div></div>
-      <div className="steps"><div><b>01</b><span>Crear una ficha de indicador</span></div><div><b>02</b><span>Guardar en la base local</span></div><div><b>03</b><span>Consultar y actualizar</span></div></div>
+    <section className="panel"><div className="panel-header"><div><h2>De la fuente al resultado</h2><p className="muted">Configura indicadores sin modificar el código.</p></div></div>
+      <div className="steps"><div><b>01</b><Link href="/fuentes">Importar una fuente sintética</Link></div><div><b>02</b><Link href="/indicadores">Configurar un método y calcular</Link></div><div><b>03</b><Link href="/tableros">Consultar resultados y crear tableros</Link></div></div>
       <Link className="button outline" href="/indicadores">Abrir indicadores →</Link>
     </section>
-    <div className="notice"><strong>Alcance del prototipo:</strong> no hay autenticación, cargas de fuentes, fórmulas ejecutables ni cálculos en esta versión. No utilices información institucional real o confidencial.</div>
+    <div className="notice"><strong>Resultados provisionales:</strong> los cálculos no equivalen a aprobación metodológica ni autorización para usos institucionales. Mantén los datos de desarrollo sintéticos.</div>
   </div>;
 }

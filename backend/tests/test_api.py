@@ -67,16 +67,19 @@ def test_patch_rejects_unknown_fields_and_nulls(client):
     assert client.patch(url, json={"name": None}).status_code == 422
 
 
-def test_file_persistence_across_app_restarts(tmp_path):
+def test_file_persistence_across_app_restarts(tmp_path, monkeypatch):
     from fastapi.testclient import TestClient
     from app.main import create_app
 
     database = tmp_path / "local.db"
+    monkeypatch.setenv("SII_MB_ADMIN_PASSWORD", "synthetic-test-pass-2026")
     url = f"sqlite+pysqlite:///{database}"
     with TestClient(create_app(url)) as first:
+        first.post("/api/v1/auth/login", json={"username": "admin", "password": "synthetic-test-pass-2026"})
         res = first.post("/api/v1/indicators", json=example_payload())
         assert res.status_code == 201
         identifier = res.json()["id"]
     with TestClient(create_app(url)) as second:
+        second.post("/api/v1/auth/login", json={"username": "admin", "password": "synthetic-test-pass-2026"})
         assert second.get(f"/api/v1/indicators/{identifier}").status_code == 200
         assert second.get("/api/v1/indicators").json()["total"] == 1
