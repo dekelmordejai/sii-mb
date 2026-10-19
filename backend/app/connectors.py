@@ -1,5 +1,7 @@
 """Connector boundary: new trusted adapters implement load(), never user code."""
+
 from typing import Protocol
+
 from app.calculation import parse_csv
 
 

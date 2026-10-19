@@ -29,8 +29,8 @@ def test_create_get_and_patch_draft(client):
     UUID(item["id"])
     assert item["status"] == "draft"
     assert item["code"].startswith("IND-")
-    assert client.get(f'/api/v1/indicators/{item["id"]}').json() == item
-    modified = client.patch(f'/api/v1/indicators/{item["id"]}', json={"unit": "seg"})
+    assert client.get(f"/api/v1/indicators/{item['id']}").json() == item
+    modified = client.patch(f"/api/v1/indicators/{item['id']}", json={"unit": "seg"})
     assert modified.status_code == 200
     assert modified.json()["unit"] == "seg"
     assert modified.json()["code"] == item["code"]
@@ -62,24 +62,31 @@ def test_missing_indicator(client):
 
 def test_patch_rejects_unknown_fields_and_nulls(client):
     created = client.post("/api/v1/indicators", json=example_payload()).json()
-    url = f'/api/v1/indicators/{created["id"]}'
+    url = f"/api/v1/indicators/{created['id']}"
     assert client.patch(url, json={"status": "approved"}).status_code == 422
     assert client.patch(url, json={"name": None}).status_code == 422
 
 
 def test_file_persistence_across_app_restarts(tmp_path, monkeypatch):
     from fastapi.testclient import TestClient
+
     from app.main import create_app
 
     database = tmp_path / "local.db"
     monkeypatch.setenv("SII_MB_ADMIN_PASSWORD", "synthetic-test-pass-2026")
     url = f"sqlite+pysqlite:///{database}"
     with TestClient(create_app(url)) as first:
-        first.post("/api/v1/auth/login", json={"username": "admin", "password": "synthetic-test-pass-2026"})
+        first.post(
+            "/api/v1/auth/login",
+            json={"username": "admin", "password": "synthetic-test-pass-2026"},
+        )
         res = first.post("/api/v1/indicators", json=example_payload())
         assert res.status_code == 201
         identifier = res.json()["id"]
     with TestClient(create_app(url)) as second:
-        second.post("/api/v1/auth/login", json={"username": "admin", "password": "synthetic-test-pass-2026"})
+        second.post(
+            "/api/v1/auth/login",
+            json={"username": "admin", "password": "synthetic-test-pass-2026"},
+        )
         assert second.get(f"/api/v1/indicators/{identifier}").status_code == 200
         assert second.get("/api/v1/indicators").json()["total"] == 1

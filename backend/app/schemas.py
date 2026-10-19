@@ -38,7 +38,9 @@ class IndicatorPatch(BaseModel):
     def non_null_options(cls, value):
         if value is None:
             raise ValueError("No puede establecerse como nulo")
-        if isinstance(value, list) and (any(not v.strip() or len(v) > 100 for v in value) or len(set(value)) != len(value)):
+        if isinstance(value, list) and (
+            any(not v.strip() or len(v) > 100 for v in value) or len(set(value)) != len(value)
+        ):
             raise ValueError("Dimensiones inválidas")
         return value
 

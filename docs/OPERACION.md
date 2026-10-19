@@ -16,12 +16,12 @@ Auditoría de accesos, cambios, valores anteriores de fichas, métodos, fuentes,
 
 `python -m app.manage migrate` aplica Alembic; también se aplica al iniciar API. No ejecutar migraciones simultáneas. La primera reconoce V0.1; la segunda conserva fichas y añade el núcleo. No se permite downgrade destructivo: restaurar respaldo validado.
 
-SQLite: detener API y copiar backend/data/sii_mb.db a una ubicación protegida fuera de Git, conservando versión de código y lockfiles. PostgreSQL: pg_dump/pg_restore conforme al procedimiento institucional. Respaldar datos, métodos, ejecuciones, usuarios y auditoría. Los respaldos incluyen hashes/sesiones y son información protegida. La restauración completa debe probarse antes de operación institucional.
+SQLite: detener API y copiar backend/data/sii_mb.db a una ubicación protegida fuera de Git, conservando versión de código y lockfiles. PostgreSQL: pg_dump/pg_restore conforme al procedimiento institucional. Respaldar datos, métodos, ejecuciones, usuarios y auditoría. Los respaldos incluyen hashes/sesiones y son información protegida. La prueba automatizada ya verificó respaldo y restauración sintéticos en PostgreSQL; resta validar el procedimiento institucional definitivo y sus controles.
 
 ## Supervisión y límites
 
 Health comprueba el proceso sin exponer datos. Errores de cálculo se muestran al usuario y quedan auditados. Cada CSV registra responsable, huella como detección de cambios y nueva carga manual como alternativa. No se afirma vigilancia automática de sistemas externos.
 
-Antes de datos/usuarios institucionales: ejecutar PostgreSQL/Compose, carga/concurrencia y restauración; configurar HTTPS/SSO/recuperación de cuentas; separar privilegios de migración/aplicación/auditoría; definir retención y monitoreo externo; revisar bloqueo concurrente y abuso; formalizar competencias de aprobación. El cálculo actual es síncrono y acotado, hasta 10 000 filas.
+Antes de datos/usuarios institucionales: ejecutar contenedores Compose y carga/concurrencia; formalizar respaldo/restauración; configurar HTTPS/SSO/recuperación de cuentas; separar privilegios de migración/aplicación/auditoría; definir retención y monitoreo externo; revisar bloqueo concurrente y abuso; formalizar competencias de aprobación. PostgreSQL y restauración sintética ya están verificados. El cálculo actual es síncrono y acotado, hasta 10 000 filas.
 
 No hay conectores reales BigQuery/API/Excel, trabajos en segundo plano ni despliegue en nube. No se instaló Docker. CI solo manual: publicar commits no ejecuta trabajos. Secretos, bases, cachés y resultados de prueba están excluidos de Git.

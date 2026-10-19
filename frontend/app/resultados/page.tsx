@@ -1,16 +1,165 @@
 "use client";
-import {useEffect,useState} from "react";
-import {Run,workspace} from "@/lib/workspace";
-import {ResultView,valueLabel} from "@/components/result-view";
-import {useSession} from "@/components/auth-gate";
+import { useEffect, useState } from "react";
+import { Run, workspace } from "@/lib/workspace";
+import { ResultView, valueLabel } from "@/components/result-view";
+import { useSession } from "@/components/auth-gate";
 
-export default function ResultsPage(){
-  const {user}=useSession();
-  const [runs,setRuns]=useState<Run[]>([]),[selected,setSelected]=useState<Run|null>(null),[compare,setCompare]=useState<Run|null>(null);
-  const [error,setError]=useState(""),[chart,setChart]=useState("line"),[offset,setOffset]=useState(0),[total,setTotal]=useState(0);
-  const load=()=>workspace.runs("",offset).then(r=>{setRuns(r.items);setTotal(r.total);});
-  useEffect(()=>{load().catch(e=>setError(e.message));},[offset]); // eslint-disable-line react-hooks/exhaustive-deps
-  return <div className="page-stack"><div className="page-heading"><div><p className="eyebrow">ANÁLISIS REPRODUCIBLE</p><h1>Resultados e historial</h1><p className="muted">Consulta las instantáneas guardadas, compara y reproduce cálculos.</p></div><button className="button outline" onClick={()=>window.print()}>Imprimir reporte</button></div>{error&&<div className="error" role="alert">{error}</div>}<section className="panel form-fields"><div className="two-col"><div><label htmlFor="result">Ejecución principal</label><select id="result" value={selected?.id??""} onChange={e=>setSelected(runs.find(r=>r.id===e.target.value)??null)}><option value="">Selecciona una ejecución</option>{runs.map(r=><option key={r.id} value={r.id}>{r.created_at} · {r.result.total.value??"—"} {r.result.unit} · {r.id.slice(0,8)}</option>)}</select></div><div><label htmlFor="compare">Comparar con</label><select id="compare" value={compare?.id??""} onChange={e=>setCompare(runs.find(r=>r.id===e.target.value)??null)}><option value="">Sin comparación</option>{runs.map(r=><option key={r.id} value={r.id}>{r.created_at} · {r.result.total.value??"—"} {r.result.unit} · {r.id.slice(0,8)}</option>)}</select></div><div><label htmlFor="chart">Visualización</label><select id="chart" value={chart} onChange={e=>setChart(e.target.value)}><option value="line">Serie temporal</option><option value="bar">Barras / ranking</option><option value="table">Tabla</option><option value="kpi">Resumen</option></select></div></div><div className="pagination"><span>{total} ejecuciones</span><div><button disabled={offset===0} onClick={()=>setOffset(Math.max(0,offset-100))}>Anterior</button><button disabled={offset+100>=total} onClick={()=>setOffset(offset+100)}>Siguiente</button></div></div></section>
-    {selected&&<section className="panel"><h2>Resultado principal</h2><ResultView run={chart==="bar"?{...selected,result:{...selected.result,series:[...selected.result.series].sort((a,b)=>Number(b.value)-Number(a.value))}}:selected} chart={chart}/>{user?.role!=="viewer"&&<button className="button outline" onClick={()=>workspace.reproduce(selected.id).then(r=>{setSelected(r);return load();}).catch(e=>setError(e.message))}>Reproducir como nueva ejecución</button>}</section>}
-    {compare&&<section className="panel"><h2>Resultado de comparación</h2><ResultView run={compare} chart={chart}/>{selected&&<p className="notice">{selected.result.unit===compare.result.unit?`Valores: ${valueLabel(selected.result.total.value)} y ${valueLabel(compare.result.total.value)} ${compare.result.unit}. Revisa método, fuente y filtros antes de interpretar diferencias.`:"Las unidades son diferentes; no se calcula una diferencia numérica."}</p>}</section>}</div>;
+export default function ResultsPage() {
+  const { user } = useSession();
+  const [runs, setRuns] = useState<Run[]>([]),
+    [selected, setSelected] = useState<Run | null>(null),
+    [compare, setCompare] = useState<Run | null>(null);
+  const [error, setError] = useState(""),
+    [chart, setChart] = useState("line"),
+    [offset, setOffset] = useState(0),
+    [total, setTotal] = useState(0);
+  const load = () =>
+    workspace.runs("", offset).then((r) => {
+      setRuns(r.items);
+      setTotal(r.total);
+    });
+  useEffect(() => {
+    load().catch((e) => setError(e.message));
+  }, [offset]); // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <div className="page-stack">
+      <div className="page-heading">
+        <div>
+          <p className="eyebrow">ANÁLISIS REPRODUCIBLE</p>
+          <h1>Resultados e historial</h1>
+          <p className="muted">
+            Consulta las instantáneas guardadas, compara y reproduce cálculos.
+          </p>
+        </div>
+        <button className="button outline" onClick={() => window.print()}>
+          Imprimir reporte
+        </button>
+      </div>
+      {error && (
+        <div className="error" role="alert">
+          {error}
+        </div>
+      )}
+      <section className="panel form-fields">
+        <div className="two-col">
+          <div>
+            <label htmlFor="result">Ejecución principal</label>
+            <select
+              id="result"
+              value={selected?.id ?? ""}
+              onChange={(e) =>
+                setSelected(runs.find((r) => r.id === e.target.value) ?? null)
+              }
+            >
+              <option value="">Selecciona una ejecución</option>
+              {runs.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.created_at} · {r.result.total.value ?? "—"} {r.result.unit}{" "}
+                  · {r.id.slice(0, 8)}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="compare">Comparar con</label>
+            <select
+              id="compare"
+              value={compare?.id ?? ""}
+              onChange={(e) =>
+                setCompare(runs.find((r) => r.id === e.target.value) ?? null)
+              }
+            >
+              <option value="">Sin comparación</option>
+              {runs.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.created_at} · {r.result.total.value ?? "—"} {r.result.unit}{" "}
+                  · {r.id.slice(0, 8)}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="chart">Visualización</label>
+            <select
+              id="chart"
+              value={chart}
+              onChange={(e) => setChart(e.target.value)}
+            >
+              <option value="line">Serie temporal</option>
+              <option value="bar">Barras / ranking</option>
+              <option value="table">Tabla</option>
+              <option value="kpi">Resumen</option>
+            </select>
+          </div>
+        </div>
+        <div className="pagination">
+          <span>{total} ejecuciones</span>
+          <div>
+            <button
+              disabled={offset === 0}
+              onClick={() => setOffset(Math.max(0, offset - 100))}
+            >
+              Anterior
+            </button>
+            <button
+              disabled={offset + 100 >= total}
+              onClick={() => setOffset(offset + 100)}
+            >
+              Siguiente
+            </button>
+          </div>
+        </div>
+      </section>
+      {selected && (
+        <section className="panel">
+          <h2>Resultado principal</h2>
+          <ResultView
+            run={
+              chart === "bar"
+                ? {
+                    ...selected,
+                    result: {
+                      ...selected.result,
+                      series: [...selected.result.series].sort(
+                        (a, b) => Number(b.value) - Number(a.value),
+                      ),
+                    },
+                  }
+                : selected
+            }
+            chart={chart}
+          />
+          {user?.role !== "viewer" && (
+            <button
+              className="button outline"
+              onClick={() =>
+                workspace
+                  .reproduce(selected.id)
+                  .then((r) => {
+                    setSelected(r);
+                    return load();
+                  })
+                  .catch((e) => setError(e.message))
+              }
+            >
+              Reproducir como nueva ejecución
+            </button>
+          )}
+        </section>
+      )}
+      {compare && (
+        <section className="panel">
+          <h2>Resultado de comparación</h2>
+          <ResultView run={compare} chart={chart} />
+          {selected && (
+            <p className="notice">
+              {selected.result.unit === compare.result.unit
+                ? `Valores: ${valueLabel(selected.result.total.value)} y ${valueLabel(compare.result.total.value)} ${compare.result.unit}. Revisa método, fuente y filtros antes de interpretar diferencias.`
+                : "Las unidades son diferentes; no se calcula una diferencia numérica."}
+            </p>
+          )}
+        </section>
+      )}
+    </div>
+  );
 }

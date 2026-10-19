@@ -1,12 +1,12 @@
 import hashlib
 import hmac
 import json
-import os
 import secrets
 import time
 from uuid import uuid4
 
 from fastapi import Depends, HTTPException, Request
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
@@ -23,7 +23,10 @@ def hash_password(password: str) -> str:
 
 def verify_password(password: str, encoded: str) -> bool:
     salt, digest = encoded.split(":")
-    return hmac.compare_digest(hashlib.scrypt(password.encode(), salt=bytes.fromhex(salt), n=16384, r=8, p=1).hex(), digest)
+    return hmac.compare_digest(
+        hashlib.scrypt(password.encode(), salt=bytes.fromhex(salt), n=16384, r=8, p=1).hex(),
+        digest,
+    )
 
 
 def token_hash(token: str) -> str:
@@ -62,24 +65,53 @@ def require_scope(user: User, kind: str, identifier: str):
         raise HTTPException(403, "El registro está fuera de tu alcance autorizado")
 
 
-def grant_created(user: User, kind: str, identifier: str):
+def grant_created(session: Session, user: User, kind: str, identifier: str):
+    if user.role == "admin":
+        return
+    user = session.scalars(
+        select(User)
+        .where(User.id == user.id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    ).one()
+    if not user.active or user.role not in ("editor", "admin"):
+        raise HTTPException(403, "La autorización de edición ha cambiado")
     scopes = json.loads(user.scopes_json)
     scopes.setdefault(kind, []).append(identifier)
     user.scopes_json = json.dumps(scopes)
 
 
 def audit(session: Session, actor: User, action: str, object_id: str, detail=None):
-    session.add(AuditEvent(id=str(uuid4()), actor_id=actor.id, action=action, object_id=object_id, detail_json=json.dumps(detail or {}, ensure_ascii=False)))
+    session.add(
+        AuditEvent(
+            id=str(uuid4()),
+            actor_id=actor.id,
+            action=action,
+            object_id=object_id,
+            detail_json=json.dumps(detail or {}, ensure_ascii=False),
+        )
+    )
 
 
 def public_user(user: User):
-    return {"id": user.id, "username": user.username, "role": user.role, "active": user.active, "scopes": json.loads(user.scopes_json)}
+    return {
+        "id": user.id,
+        "username": user.username,
+        "role": user.role,
+        "active": user.active,
+        "scopes": json.loads(user.scopes_json),
+    }
 
 
 def bootstrap(session: Session, username: str, password: str):
     if len(password) < 12 or len(password) > 128:
         raise ValueError("La contraseña debe tener entre 12 y 128 caracteres")
-    user = User(id=str(uuid4()), username=username.lower(), password_hash=hash_password(password), role="admin")
+    user = User(
+        id=str(uuid4()),
+        username=username.lower(),
+        password_hash=hash_password(password),
+        role="admin",
+    )
     session.add(user)
     audit(session, user, "admin.bootstrap", user.id)
     session.commit()

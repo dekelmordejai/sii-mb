@@ -1,80 +1,214 @@
-import {test,expect} from "@playwright/test";
-import {readFile} from "node:fs/promises";
+import { test, expect } from "@playwright/test";
+import { readFile } from "node:fs/promises";
 
-test("flujo sintético completo desde catálogo vacío",async({page})=>{
-  const errors:string[]=[];
-  page.on("pageerror",e=>errors.push(e.message));
+test("flujo sintético completo desde catálogo vacío", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/");
-  await page.getByLabel("Usuario",{exact:true}).fill("admin");
-  await page.getByLabel("Contraseña",{exact:true}).fill("synthetic-e2e-password-2026");
-  await page.getByRole("button",{name:"Iniciar sesión"}).click();
-  await expect(page.getByRole("heading",{name:"Bienvenido al SII-MB"})).toBeVisible();
-  await page.getByRole("link",{name:"Indicadores",exact:true}).click();
+  await page.getByLabel("Usuario", { exact: true }).fill("admin");
+  await page
+    .getByLabel("Contraseña", { exact: true })
+    .fill("synthetic-e2e-password-2026");
+  await page.getByRole("button", { name: "Iniciar sesión" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Bienvenido al SII-MB" }),
+  ).toBeVisible();
+  await page.getByRole("link", { name: "Indicadores", exact: true }).click();
   await expect(page.getByText("No hay indicadores para mostrar")).toBeVisible();
-  await page.getByRole("link",{name:"Fuentes de datos"}).click();
-  await page.getByRole("button",{name:"Preparar ejemplo sintético"}).click();
-  await expect(page.getByLabel("Nombre de fuente")).toHaveValue("Demostración sintética");
-  await page.getByRole("button",{name:"Guardar fuente"}).click();
+  await page.getByRole("link", { name: "Fuentes de datos" }).click();
+  await page
+    .getByRole("button", { name: "Preparar ejemplo sintético" })
+    .click();
+  await expect(page.getByLabel("Nombre de fuente")).toHaveValue(
+    "Demostración sintética",
+  );
+  await page.getByRole("button", { name: "Guardar fuente" }).click();
   await expect(page.getByRole("status")).toContainText("Fuente guardada");
-  await page.getByRole("link",{name:"Indicadores",exact:true}).click();
-  await page.getByRole("link",{name:"Nuevo indicador"}).click();
-  await page.getByLabel("Nombre del indicador").fill("Razón ficticia de prueba");
-  await page.getByLabel("Definición conceptual").fill("Relación de dos columnas completamente sintéticas para probar la plataforma.");
+  await page.getByRole("link", { name: "Indicadores", exact: true }).click();
+  await page.getByRole("link", { name: "Nuevo indicador" }).click();
+  await page
+    .getByLabel("Nombre del indicador")
+    .fill("Razón ficticia de prueba");
+  await page
+    .getByLabel("Definición conceptual")
+    .fill(
+      "Relación de dos columnas completamente sintéticas para probar la plataforma.",
+    );
   await page.getByLabel("Unidad de medida").fill("%");
-  await page.getByLabel("Dimensiones (separadas por coma)").fill("fecha, grupo");
-  await page.getByRole("button",{name:"Registrar indicador"}).click();
-  await expect(page.getByRole("heading",{name:"Razón ficticia de prueba"})).toBeVisible();
-  await page.getByLabel("Fuente para configurar y calcular").selectOption({label:"Demostración sintética · 4 filas"});
-  await page.getByLabel("Numerador",{exact:true}).selectOption("valor");
-  await page.getByLabel("Denominador",{exact:true}).selectOption("base");
+  await page
+    .getByLabel("Dimensiones (separadas por coma)")
+    .fill("fecha, grupo");
+  await page.getByRole("button", { name: "Registrar indicador" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Razón ficticia de prueba" }),
+  ).toBeVisible();
+  await page
+    .getByLabel("Fuente para configurar y calcular")
+    .selectOption({ label: "Demostración sintética · 4 filas" });
+  await page.getByLabel("Numerador", { exact: true }).selectOption("valor");
+  await page.getByLabel("Denominador", { exact: true }).selectOption("base");
   await page.getByLabel("Columna de fecha").selectOption("fecha");
   await page.getByLabel("Dimensión de agrupación").selectOption("grupo");
-  await page.getByRole("button",{name:"Guardar nueva versión"}).click();
-  await expect(page.getByLabel("Versión a ejecutar o consultar")).toContainText("V1");
-  await page.getByRole("button",{name:"Ejecutar y guardar resultado"}).click();
-  await expect(page.getByRole("heading",{name:"Resultado guardado"})).toBeVisible();
+  await page.getByRole("button", { name: "Guardar nueva versión" }).click();
+  await expect(page.getByLabel("Versión a ejecutar o consultar")).toContainText(
+    "V1",
+  );
+  await page
+    .getByRole("button", { name: "Ejecutar y guardar resultado" })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Resultado guardado" }),
+  ).toBeVisible();
   await expect(page.locator(".result-number")).toContainText("81.666667");
-  await expect(page.getByRole("img",{name:/Gráfica de resultados/})).toBeVisible();
-  const downloadPromise=page.waitForEvent("download");
-  await page.getByRole("button",{name:"Exportar CSV"}).click();
-  const download=await downloadPromise;
-  const file=await download.path();
-  expect(await readFile(file!,"utf8")).toContain("source_sha256");
+  await expect(
+    page.getByRole("img", { name: /Gráfica de resultados/ }),
+  ).toBeVisible();
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Exportar CSV" }).click();
+  const download = await downloadPromise;
+  const file = await download.path();
+  expect(await readFile(file!, "utf8")).toContain("source_sha256");
   await page.getByLabel("Multiplicador final").selectOption("1");
   await page.getByLabel("Unidad del método").fill("razón");
-  await page.getByRole("button",{name:"Guardar nueva versión"}).click();
-  await expect(page.getByLabel("Versión a ejecutar o consultar")).toContainText("V2");
-  await page.getByRole("button",{name:"Ejecutar y guardar resultado"}).click();
+  await page.getByRole("button", { name: "Guardar nueva versión" }).click();
+  await expect(page.getByLabel("Versión a ejecutar o consultar")).toContainText(
+    "V2",
+  );
+  await page
+    .getByRole("button", { name: "Ejecutar y guardar resultado" })
+    .click();
   await expect(page.locator(".result-number")).toContainText("0.816667");
-  await expect(page.getByRole("heading",{name:"Historial del indicador"})).toBeVisible();
-  await page.getByRole("link",{name:"Tableros",exact:true}).click();
-  await page.getByLabel("Nombre del tablero").fill("Tablero ficticio de validación");
-  const options=await page.getByLabel("Resultado del componente").locator("option").all();
-  const runId=await options[1].getAttribute("value");
+  await page
+    .getByLabel("Operación", { exact: true })
+    .selectOption("expression");
+  await expect(page.getByLabel("Multiplicador final")).toHaveValue("1");
+  await page.getByLabel("Unidad del método").fill("%");
+  await page.getByRole("button", { name: "Guardar nueva versión" }).click();
+  await expect(page.getByLabel("Versión a ejecutar o consultar")).toContainText(
+    "V3",
+  );
+  await page
+    .getByRole("button", { name: "Ejecutar y guardar resultado" })
+    .click();
+  await expect(page.locator(".result-number")).toContainText("81.666667");
+  await expect(
+    page.getByRole("heading", { name: "Historial del indicador" }),
+  ).toBeVisible();
+  await page.getByRole("link", { name: "Tableros", exact: true }).click();
+  await page
+    .getByLabel("Nombre del tablero")
+    .fill("Tablero ficticio de validación");
+  const options = await page
+    .getByLabel("Resultado del componente")
+    .locator("option")
+    .all();
+  const runId = await options[1].getAttribute("value");
   await page.getByLabel("Resultado del componente").selectOption(runId!);
   await page.getByLabel("Título del componente").fill("Serie sintética");
-  await page.getByRole("button",{name:"Añadir componente"}).click();
-  await page.getByRole("button",{name:"Guardar tablero"}).click();
-  await expect(page.getByLabel("Tablero guardado")).toContainText("Tablero ficticio de validación");
+  await page.getByRole("button", { name: "Añadir componente" }).click();
+  await page.getByRole("button", { name: "Guardar tablero" }).click();
+  await expect(page.getByLabel("Tablero guardado")).toContainText(
+    "Tablero ficticio de validación",
+  );
   await page.reload();
-  await page.getByLabel("Tablero guardado").selectOption({label:"Tablero ficticio de validación"});
-  await expect(page.getByRole("heading",{name:"Serie sintética"})).toBeVisible();
-  await page.screenshot({path:"test-results/tablero-desktop.png",fullPage:true});
-  await page.setViewportSize({width:390,height:844});
-  await page.screenshot({path:"test-results/tablero-mobile.png",fullPage:true});
-  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
-  await page.getByRole("link",{name:"Administración",exact:true}).click();
-  await expect(page.getByRole("heading",{name:"Registro de auditoría"})).toBeVisible();
-  await page.getByRole("button",{name:"Cerrar sesión"}).click();
-  await expect(page.getByRole("button",{name:"Iniciar sesión"})).toBeVisible();
+  await page
+    .getByLabel("Tablero guardado")
+    .selectOption({ label: "Tablero ficticio de validación" });
+  await expect(
+    page.getByRole("heading", { name: "Serie sintética" }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: "test-results/tablero-desktop.png",
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({
+    path: "test-results/tablero-mobile.png",
+    fullPage: true,
+  });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await page.getByRole("link", { name: "Administración", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Registro de auditoría" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Cerrar sesión" }).click();
+  await expect(
+    page.getByRole("button", { name: "Iniciar sesión" }),
+  ).toBeVisible();
   expect(errors).toEqual([]);
 });
 
-test("la sesión es obligatoria y el ingreso inválido informa el error",async({page})=>{
+test("la sesión es obligatoria y el ingreso inválido informa el error", async ({
+  page,
+}) => {
   await page.goto("/administracion");
-  await expect(page.getByRole("button",{name:"Iniciar sesión"})).toBeVisible();
-  await page.getByLabel("Usuario",{exact:true}).fill("unknown");
-  await page.getByLabel("Contraseña",{exact:true}).fill("invalid-password");
-  await page.getByRole("button",{name:"Iniciar sesión"}).click();
-  await expect(page.getByText("Usuario o contraseña incorrectos",{exact:true})).toContainText("Usuario o contraseña incorrectos");
+  await expect(
+    page.getByRole("button", { name: "Iniciar sesión" }),
+  ).toBeVisible();
+  await page.getByLabel("Usuario", { exact: true }).fill("unknown");
+  await page.getByLabel("Contraseña", { exact: true }).fill("invalid-password");
+  await page.getByRole("button", { name: "Iniciar sesión" }).click();
+  await expect(
+    page.getByText("Usuario o contraseña incorrectos", { exact: true }),
+  ).toContainText("Usuario o contraseña incorrectos");
+});
+
+test("una cuenta de consulta no ofrece acciones de edición", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByLabel("Usuario", { exact: true }).fill("admin");
+  await page
+    .getByLabel("Contraseña", { exact: true })
+    .fill("synthetic-e2e-password-2026");
+  await page.getByRole("button", { name: "Iniciar sesión" }).click();
+  await page.getByRole("link", { name: "Administración", exact: true }).click();
+  await page.getByLabel("Usuario", { exact: true }).fill("synthetic-viewer");
+  await page
+    .getByLabel("Contraseña", { exact: true })
+    .fill("synthetic-viewer-password-2026");
+  await page.getByLabel("Alcance de indicadores").fill("*");
+  await page.getByLabel("Alcance de fuentes").fill("*");
+  await page.getByRole("button", { name: "Guardar cuenta" }).click();
+  await expect(page.getByRole("status")).toContainText("Cuenta guardada");
+  await page.getByRole("button", { name: "Cerrar sesión" }).click();
+  await expect(
+    page.getByRole("button", { name: "Iniciar sesión" }),
+  ).toBeVisible();
+  await page.getByLabel("Usuario", { exact: true }).fill("synthetic-viewer");
+  await page
+    .getByLabel("Contraseña", { exact: true })
+    .fill("synthetic-viewer-password-2026");
+  await page.getByRole("button", { name: "Iniciar sesión" }).click();
+  await expect(
+    page.getByRole("button", { name: "Cerrar sesión" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Administración" }),
+  ).not.toBeVisible();
+  await page.getByRole("link", { name: "Indicadores", exact: true }).click();
+  await expect(page.getByRole("link", { name: /Nuevo indicador/ })).toHaveCount(
+    0,
+  );
+  await page.getByRole("link", { name: "Ver →" }).click();
+  await expect(page.getByRole("link", { name: "Editar borrador" })).toHaveCount(
+    0,
+  );
+  await expect(
+    page.getByRole("button", { name: "Ejecutar y guardar resultado" }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "Historial del indicador" }),
+  ).toBeVisible();
+  await page.getByRole("link", { name: "Fuentes de datos" }).click();
+  await expect(
+    page.getByRole("button", { name: "Guardar fuente" }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Inspeccionar" }),
+  ).toBeVisible();
 });

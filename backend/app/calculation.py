@@ -1,4 +1,5 @@
 """Deterministic allowlisted engine. No eval, SQL, code or expression interpreter."""
+
 import csv
 import io
 from collections import defaultdict
@@ -60,15 +61,24 @@ def validate_expression(node, depth=0, budget=None):
     elif op in ("sum", "mean", "min", "max", "count"):
         if set(node) - {"op", "column", "where"}:
             raise ValueError("Campos desconocidos en agregación")
-        if op != "count" and (not isinstance(node.get("column"), str) or not 1 <= len(node["column"]) <= 100):
+        if op != "count" and (
+            not isinstance(node.get("column"), str) or not 1 <= len(node["column"]) <= 100
+        ):
             raise ValueError("Columna requerida en agregación")
         if op == "count" and "column" in node:
             raise ValueError("El conteo cuenta filas, sin columna numérica")
         if "where" in node:
             rule = node["where"]
-            if not isinstance(rule, dict) or set(rule) != {"column", "eq"} or not all(isinstance(v, str) and 0 < len(v) <= 100 for v in rule.values()):
+            if (
+                not isinstance(rule, dict)
+                or set(rule) != {"column", "eq"}
+                or not all(isinstance(v, str) and 0 < len(v) <= 100 for v in rule.values())
+            ):
                 raise ValueError("Condición inválida: usa column y eq")
-    elif op in ("add", "subtract", "multiply", "divide") and set(node) == {"op", "args"}:
+    elif op in ("add", "subtract", "multiply", "divide") and set(node) == {
+        "op",
+        "args",
+    }:
         if not isinstance(node["args"], list) or len(node["args"]) != 2:
             raise ValueError("La operación requiere dos argumentos")
         for child in node["args"]:
@@ -147,7 +157,11 @@ def number(value: str) -> Decimal:
         result = Decimal(value)
     except InvalidOperation:
         raise ValueError(f"Número inválido: {value[:40]}") from None
-    if not result.is_finite() or result.copy_abs() > Decimal("1e18") or result.as_tuple().exponent < -12:
+    if (
+        not result.is_finite()
+        or result.copy_abs() > Decimal("1e18")
+        or result.as_tuple().exponent < -12
+    ):
         raise ValueError("Número fuera de rango o precisión (máximo 12 decimales)")
     return result
 
@@ -206,7 +220,16 @@ def parse_csv(content: str):
 def calculate(content: str, method: MethodConfig, request: RunInput):
     rows, profile = parse_csv(content)
     columns = {c["name"] for c in profile["columns"]}
-    required = {c for c in (method.numerator, method.denominator, method.date_column, method.group_by) if c}
+    required = {
+        c
+        for c in (
+            method.numerator,
+            method.denominator,
+            method.date_column,
+            method.group_by,
+        )
+        if c
+    }
     if method.expression:
         required |= expression_columns(method.expression)
     if not (required | set(request.filters)).issubset(columns):
@@ -223,7 +246,9 @@ def calculate(content: str, method: MethodConfig, request: RunInput):
                 day = date.fromisoformat(iso_date(row[method.date_column]))
                 if (request.start and day < request.start) or (request.end and day > request.end):
                     continue
-                if (method.valid_from and day < method.valid_from) or (method.valid_to and day > method.valid_to):
+                if (method.valid_from and day < method.valid_from) or (
+                    method.valid_to and day > method.valid_to
+                ):
                     continue
             numeric_columns = {c for c in (method.numerator, method.denominator) if c}
             if method.expression:
@@ -247,28 +272,65 @@ def calculate(content: str, method: MethodConfig, request: RunInput):
     def aggregate(group):
         with localcontext() as ctx:
             ctx.prec = 50
-            numerator = Decimal(len(group)) if method.operation in ("count", "expression") else sum((number(r[method.numerator]) for r in group), Decimal(0))
-            denominator = sum((number(r[method.denominator]) for r in group), Decimal(0)) if method.operation == "ratio_of_sums" else None
+            numerator = (
+                Decimal(len(group))
+                if method.operation in ("count", "expression")
+                else sum((number(r[method.numerator]) for r in group), Decimal(0))
+            )
+            denominator = (
+                sum((number(r[method.denominator]) for r in group), Decimal(0))
+                if method.operation == "ratio_of_sums"
+                else None
+            )
             value = numerator
             if method.operation in ("mean", "min", "max"):
                 values = [number(r[method.numerator]) for r in group]
-                value = numerator / len(group) if method.operation == "mean" else min(values) if method.operation == "min" else max(values)
+                value = (
+                    numerator / len(group)
+                    if method.operation == "mean"
+                    else min(values)
+                    if method.operation == "min"
+                    else max(values)
+                )
             if method.operation == "expression":
                 value = evaluate(method.expression, group, method.missing)
             if denominator is not None:
                 value = None if denominator == 0 else numerator / denominator
-            return {"value": str(value * method.multiplier) if value is not None else None,
-                    "status": "undefined" if value is None and method.operation == "expression" else "zero_denominator" if value is None else "ok",
-                    "numerator": str(numerator) if method.operation != "expression" else None, "denominator": str(denominator) if denominator is not None else None,
-                    "rows": len(group)}
+            return {
+                "value": str(value * method.multiplier) if value is not None else None,
+                "status": "undefined"
+                if value is None and method.operation == "expression"
+                else "zero_denominator"
+                if value is None
+                else "ok",
+                "numerator": str(numerator) if method.operation != "expression" else None,
+                "denominator": str(denominator) if denominator is not None else None,
+                "rows": len(group),
+            }
 
     groups = defaultdict(list)
     for row in selected:
         period = row[method.date_column] if method.date_column else "Total"
         if method.date_column:
-            period = period[:7] if method.granularity == "month" else period[:4] if method.granularity == "year" else period
+            period = (
+                period[:7]
+                if method.granularity == "month"
+                else period[:4]
+                if method.granularity == "year"
+                else period
+            )
         key = (period, row[method.group_by] if method.group_by else "Todas")
         groups[key].append(row)
-    return {"total": aggregate(selected), "series": [{"period": key[0], "group": key[1], **aggregate(group)} for key, group in sorted(groups.items())],
-            "unit": method.unit, "selected_rows": len(selected), "source_rows": len(rows), "skipped_missing": skipped,
-            "result_status": "provisional", "usage_authorization": "none"}
+    return {
+        "total": aggregate(selected),
+        "series": [
+            {"period": key[0], "group": key[1], **aggregate(group)}
+            for key, group in sorted(groups.items())
+        ],
+        "unit": method.unit,
+        "selected_rows": len(selected),
+        "source_rows": len(rows),
+        "skipped_missing": skipped,
+        "result_status": "provisional",
+        "usage_authorization": "none",
+    }

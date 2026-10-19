@@ -1,11 +1,11 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import String, Text, ForeignKey, UniqueConstraint, Boolean, Float
+from sqlalchemy import Boolean, Float, ForeignKey, String, Text, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
 def utc_now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return datetime.now(timezone.utc).isoformat(timespec="microseconds")
 
 
 class Base(DeclarativeBase):
@@ -32,6 +32,7 @@ class Indicator(Base):
     @property
     def dimensions(self):
         import json
+
         return json.loads(self.dimensions_json)
 
 

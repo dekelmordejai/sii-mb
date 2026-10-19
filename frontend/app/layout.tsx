@@ -8,6 +8,27 @@ export const metadata: Metadata = {
   description: "Entorno local de desarrollo del SII-MB",
 };
 
-export default function RootLayout({ children }: Readonly<{children: React.ReactNode}>) {
-  return <html lang="es"><body><AuthGate><div className="shell"><Navigation/><main className="main"><div className="topstrip"><span>Sistema Integral de Indicadores · Metrobús</span><span className="topstrip-status">● DESARROLLO LOCAL · DATOS SINTÉTICOS</span></div>{children}</main></div></AuthGate></body></html>;
+export default function RootLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
+  return (
+    <html lang="es">
+      <body>
+        <AuthGate>
+          <div className="shell">
+            <Navigation />
+            <main className="main">
+              <div className="topstrip">
+                <span>Sistema Integral de Indicadores · Metrobús</span>
+                <span className="topstrip-status">
+                  ● DESARROLLO LOCAL · DATOS SINTÉTICOS
+                </span>
+              </div>
+              {children}
+            </main>
+          </div>
+        </AuthGate>
+      </body>
+    </html>
+  );
 }

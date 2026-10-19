@@ -1,17 +1,20 @@
 import os
+
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.db import make_lifespan
-from app.routers.indicators import router as indicator_router
 from app.routers.analysis import router as analysis_router
 from app.routers.auth import router as auth_router
+from app.routers.indicators import router as indicator_router
 from app.routers.workspace import router as workspace_router
 
 
 def create_app(database_url: str | None = None) -> FastAPI:
-    origins = os.getenv("SII_MB_UI_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
+    origins = os.getenv("SII_MB_UI_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(
+        ","
+    )
     app = FastAPI(
         title="SII-MB · API local",
         description="Fuentes sintéticas, métodos declarativos y resultados reproducibles. Desarrollo local.",
@@ -25,6 +28,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
         allow_headers=["Content-Type"],
         allow_credentials=True,
     )
+
     @app.middleware("http")
     async def local_protection(request: Request, call_next):
         origin = request.headers.get("origin")
@@ -47,6 +51,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
         response.headers["Cache-Control"] = "no-store"
         response.headers["X-Frame-Options"] = "DENY"
         return response
+
     app.include_router(indicator_router)
     app.include_router(analysis_router)
     app.include_router(auth_router)

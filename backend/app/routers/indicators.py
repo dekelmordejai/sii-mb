@@ -1,15 +1,20 @@
-from uuid import uuid4
 import json
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.models import Indicator, utc_now_iso
+from app.models import Indicator, User, utc_now_iso
 from app.schemas import IndicatorInput, IndicatorPage, IndicatorPatch, IndicatorView
-from app.security import current_user, editor, allowed, require_scope, grant_created, audit
-from app.models import User
+from app.security import (
+    audit,
+    current_user,
+    editor,
+    grant_created,
+    require_scope,
+)
 
 router = APIRouter(prefix="/api/v1/indicators", tags=["indicators"])
 
@@ -28,17 +33,30 @@ def list_indicators(
         where.append(Indicator.id.in_(scope))
     if q and q.strip():
         term = f"%{q.strip()}%"
-        where.append(or_(Indicator.name.ilike(term), Indicator.code.ilike(term), Indicator.domain.ilike(term)))
+        where.append(
+            or_(
+                Indicator.name.ilike(term),
+                Indicator.code.ilike(term),
+                Indicator.domain.ilike(term),
+            )
+        )
     total = session.scalar(select(func.count()).select_from(Indicator).where(*where)) or 0
     items = session.scalars(
-        select(Indicator).where(*where).order_by(Indicator.created_at.desc(), Indicator.id.desc())
-        .offset(offset).limit(limit)
+        select(Indicator)
+        .where(*where)
+        .order_by(Indicator.created_at.desc(), Indicator.id.desc())
+        .offset(offset)
+        .limit(limit)
     ).all()
     return IndicatorPage(items=items, total=total, limit=limit, offset=offset)
 
 
 @router.post("", response_model=IndicatorView, status_code=201)
-def create_indicator(payload: IndicatorInput, session: Session = Depends(get_db), user: User = Depends(editor)):
+def create_indicator(
+    payload: IndicatorInput,
+    session: Session = Depends(get_db),
+    user: User = Depends(editor),
+):
     # Institutional identifier is stable and independent of name, area, or dashboard.
     identifier = str(uuid4())
     indicator = Indicator(
@@ -49,7 +67,7 @@ def create_indicator(payload: IndicatorInput, session: Session = Depends(get_db)
         status="draft",
     )
     session.add(indicator)
-    grant_created(user, "indicators", indicator.id)
+    grant_created(session, user, "indicators", indicator.id)
     audit(session, user, "indicator.create", indicator.id, payload.model_dump())
     session.commit()
     session.refresh(indicator)
@@ -57,7 +75,11 @@ def create_indicator(payload: IndicatorInput, session: Session = Depends(get_db)
 
 
 @router.get("/{indicator_id}", response_model=IndicatorView)
-def get_indicator(indicator_id: str, session: Session = Depends(get_db), user: User = Depends(current_user)):
+def get_indicator(
+    indicator_id: str,
+    session: Session = Depends(get_db),
+    user: User = Depends(current_user),
+):
     require_scope(user, "indicators", indicator_id)
     indicator = session.get(Indicator, indicator_id)
     if indicator is None:
@@ -66,7 +88,12 @@ def get_indicator(indicator_id: str, session: Session = Depends(get_db), user: U
 
 
 @router.patch("/{indicator_id}", response_model=IndicatorView)
-def update_indicator(indicator_id: str, payload: IndicatorPatch, session: Session = Depends(get_db), user: User = Depends(editor)):
+def update_indicator(
+    indicator_id: str,
+    payload: IndicatorPatch,
+    session: Session = Depends(get_db),
+    user: User = Depends(editor),
+):
     require_scope(user, "indicators", indicator_id)
     indicator = session.get(Indicator, indicator_id)
     if indicator is None:
@@ -82,7 +109,13 @@ def update_indicator(indicator_id: str, payload: IndicatorPatch, session: Sessio
             setattr(indicator, key, value)
     if changes:
         indicator.updated_at = utc_now_iso()
-        audit(session, user, "indicator.update", indicator.id, {"before": before, "changes": changes})
+        audit(
+            session,
+            user,
+            "indicator.update",
+            indicator.id,
+            {"before": before, "changes": changes},
+        )
         session.commit()
         session.refresh(indicator)
     return indicator

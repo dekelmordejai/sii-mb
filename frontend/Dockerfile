@@ -15,4 +15,4 @@ WORKDIR /application
 COPY --from=builder --chown=node:node /application ./
 USER node
 EXPOSE 3000
-CMD ["npm", "run", "start", "--", "--hostname", "0.0.0.0"]
+CMD ["node", "node_modules/next/dist/bin/next", "start", "--hostname", "0.0.0.0", "--port", "3000"]

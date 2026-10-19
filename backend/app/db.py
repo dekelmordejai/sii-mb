@@ -5,12 +5,9 @@ from pathlib import Path
 
 from fastapi import FastAPI, Request
 from sqlalchemy import create_engine, event, select
-from sqlalchemy.engine import Engine
-from sqlalchemy.engine import make_url
+from sqlalchemy.engine import Engine, make_url
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
-
-from app.models import Base
 
 
 def default_database_url() -> str:
@@ -31,9 +28,11 @@ def make_engine(database_url: str) -> Engine:
             options["poolclass"] = StaticPool
     engine = create_engine(database_url, **options)
     if database_url.startswith("sqlite"):
+
         @event.listens_for(engine, "connect")
         def foreign_keys(connection, _):
             connection.execute("PRAGMA foreign_keys=ON")
+
     return engine
 
 
@@ -45,12 +44,17 @@ def make_lifespan(database_url: str | None):
         from app.migrations import upgrade
         from app.models import User
         from app.security import bootstrap
+
         upgrade(engine)
         app.state.session_factory = sessionmaker(bind=engine, expire_on_commit=False)
         if os.getenv("SII_MB_ADMIN_PASSWORD"):
             with app.state.session_factory() as session:
                 if session.scalar(select(User.id).limit(1)) is None:
-                    bootstrap(session, os.getenv("SII_MB_ADMIN_USERNAME", "admin"), os.environ["SII_MB_ADMIN_PASSWORD"])
+                    bootstrap(
+                        session,
+                        os.getenv("SII_MB_ADMIN_USERNAME", "admin"),
+                        os.environ["SII_MB_ADMIN_PASSWORD"],
+                    )
         try:
             yield
         finally:

@@ -1,18 +1,223 @@
 "use client";
-import {useEffect,useState} from "react";
-import {Dashboard,Run,Widget,workspace} from "@/lib/workspace";
-import {ResultView} from "@/components/result-view";
-import {useSession} from "@/components/auth-gate";
+import { useEffect, useState } from "react";
+import { Dashboard, Run, Widget, workspace } from "@/lib/workspace";
+import { ResultView } from "@/components/result-view";
+import { useSession } from "@/components/auth-gate";
 
-export default function DashboardsPage(){
-  const {user}=useSession();
-  const [items,setItems]=useState<Dashboard[]>([]),[runs,setRuns]=useState<Run[]>([]),[selected,setSelected]=useState<Dashboard|null>(null);
-  const [name,setName]=useState(""),[widgets,setWidgets]=useState<Widget[]>([]),[runId,setRunId]=useState(""),[title,setTitle]=useState(""),[chart,setChart]=useState<Widget["chart"]>("line"),[error,setError]=useState("");
-  async function load(){const[d,r]=await Promise.all([workspace.dashboards(),workspace.runs()]);setItems(d);setRuns(r.items);}
-  useEffect(()=>{load().catch(e=>setError(e.message));},[]);
-  async function open(item:Dashboard){try{const missing=item.widgets.filter(w=>!runs.some(r=>r.id===w.run_id));const fetched=await Promise.all(missing.map(w=>workspace.run(w.run_id)));setRuns(rs=>[...rs,...fetched]);setSelected(item);setName(item.name);setWidgets(item.widgets);}catch(e){setError(e instanceof Error?e.message:"Error al abrir tablero");}}
-  return <div className="page-stack"><div className="page-heading"><div><p className="eyebrow">VISUALIZACIÓN PERSONAL</p><h1>Tableros</h1><p className="muted">Organiza hasta 12 vistas de resultados guardados. Cada tablero conserva sus referencias.</p></div><button className="button outline" onClick={()=>window.print()}>Imprimir tablero</button></div>{error&&<p className="error" role="alert">{error}</p>}
-    <section className="panel form-fields"><label htmlFor="dashboard-select">Tablero guardado</label><select id="dashboard-select" value={selected?.id??""} onChange={e=>{const d=items.find(i=>i.id===e.target.value);if(d)open(d);else{setSelected(null);setName("");setWidgets([]);}}}><option value="">Crear tablero nuevo</option>{items.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select>
-    {user?.role!=="viewer"&&<><label htmlFor="dashboard-name">Nombre del tablero</label><input id="dashboard-name" value={name} onChange={e=>setName(e.target.value)} minLength={3} maxLength={160}/><div className="two-col"><div><label htmlFor="widget-run">Resultado del componente</label><select id="widget-run" value={runId} onChange={e=>setRunId(e.target.value)}><option value="">Selecciona ejecución</option>{runs.map(r=><option key={r.id} value={r.id}>{r.result.total.value??"—"} {r.result.unit} · {r.id.slice(0,8)}</option>)}</select></div><div><label htmlFor="widget-title">Título del componente</label><input id="widget-title" value={title} onChange={e=>setTitle(e.target.value)} maxLength={160}/></div><div><label htmlFor="widget-chart">Tipo de vista</label><select id="widget-chart" value={chart} onChange={e=>setChart(e.target.value as Widget["chart"])}><option value="line">Línea</option><option value="bar">Barras</option><option value="table">Tabla</option><option value="kpi">Resumen</option></select></div></div><div className="form-actions"><button className="button outline" disabled={!runId||!title.trim()||widgets.length>=12} onClick={()=>{setWidgets([...widgets,{run_id:runId,title,chart}]);setTitle("");}}>Añadir componente</button><button className="button primary" disabled={name.trim().length<3||widgets.length===0} onClick={()=>workspace.saveDashboard(name,widgets,selected?.id).then(d=>{setSelected(d);return load();}).catch(e=>setError(e.message))}>Guardar tablero</button></div></>}
-    </section><div className="dashboard-grid">{widgets.map((w,i)=>{const r=runs.find(r=>r.id===w.run_id);return <section className="panel" key={`${w.run_id}-${i}`}><div className="panel-header"><h2>{w.title}</h2>{user?.role!=="viewer"&&<button className="button outline small" aria-label={`Quitar ${w.title}`} onClick={()=>setWidgets(widgets.filter((_,j)=>j!==i))}>Quitar</button>}</div>{r?<ResultView run={r} chart={w.chart}/>:<p>Cargando resultado…</p>}</section>;})}</div></div>;
+export default function DashboardsPage() {
+  const { user } = useSession();
+  const [items, setItems] = useState<Dashboard[]>([]),
+    [runs, setRuns] = useState<Run[]>([]),
+    [selected, setSelected] = useState<Dashboard | null>(null);
+  const [name, setName] = useState(""),
+    [widgets, setWidgets] = useState<Widget[]>([]),
+    [runId, setRunId] = useState(""),
+    [title, setTitle] = useState(""),
+    [chart, setChart] = useState<Widget["chart"]>("line"),
+    [error, setError] = useState("");
+  const [runsTotal, setRunsTotal] = useState(0),
+    [runsOffset, setRunsOffset] = useState(0);
+  async function load() {
+    const [d, r] = await Promise.all([
+      workspace.dashboards(),
+      workspace.runs(),
+    ]);
+    setItems(d);
+    setRuns(r.items);
+    setRunsTotal(r.total);
+    setRunsOffset(0);
+  }
+  useEffect(() => {
+    load().catch((e) => setError(e.message));
+  }, []);
+  async function open(item: Dashboard) {
+    try {
+      const missing = item.widgets.filter(
+        (w) => !runs.some((r) => r.id === w.run_id),
+      );
+      const fetched = await Promise.all(
+        missing.map((w) => workspace.run(w.run_id)),
+      );
+      setRuns((rs) => [
+        ...new Map([...rs, ...fetched].map((r) => [r.id, r])).values(),
+      ]);
+      setSelected(item);
+      setName(item.name);
+      setWidgets(item.widgets);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error al abrir tablero");
+    }
+  }
+  return (
+    <div className="page-stack">
+      <div className="page-heading">
+        <div>
+          <p className="eyebrow">VISUALIZACIÓN PERSONAL</p>
+          <h1>Tableros</h1>
+          <p className="muted">
+            Organiza hasta 12 vistas de resultados guardados. Cada tablero
+            conserva sus referencias.
+          </p>
+        </div>
+        <button className="button outline" onClick={() => window.print()}>
+          Imprimir tablero
+        </button>
+      </div>
+      {error && (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      )}
+      <section className="panel form-fields">
+        {runsOffset + 100 < runsTotal && (
+          <button
+            className="button outline small"
+            onClick={() =>
+              workspace
+                .runs("", runsOffset + 100)
+                .then((page) => {
+                  setRuns((rs) => [
+                    ...new Map(
+                      [...rs, ...page.items].map((r) => [r.id, r]),
+                    ).values(),
+                  ]);
+                  setRunsOffset(runsOffset + 100);
+                })
+                .catch((e) => setError(e.message))
+            }
+          >
+            Cargar más resultados históricos
+          </button>
+        )}
+        <label htmlFor="dashboard-select">Tablero guardado</label>
+        <select
+          id="dashboard-select"
+          value={selected?.id ?? ""}
+          onChange={(e) => {
+            const d = items.find((i) => i.id === e.target.value);
+            if (d) open(d);
+            else {
+              setSelected(null);
+              setName("");
+              setWidgets([]);
+            }
+          }}
+        >
+          <option value="">Crear tablero nuevo</option>
+          {items.map((d) => (
+            <option key={d.id} value={d.id}>
+              {d.name}
+            </option>
+          ))}
+        </select>
+        {user?.role !== "viewer" && (
+          <>
+            <label htmlFor="dashboard-name">Nombre del tablero</label>
+            <input
+              id="dashboard-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              minLength={3}
+              maxLength={160}
+            />
+            <div className="two-col">
+              <div>
+                <label htmlFor="widget-run">Resultado del componente</label>
+                <select
+                  id="widget-run"
+                  value={runId}
+                  onChange={(e) => setRunId(e.target.value)}
+                >
+                  <option value="">Selecciona ejecución</option>
+                  {runs.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.result.total.value ?? "—"} {r.result.unit} ·{" "}
+                      {r.id.slice(0, 8)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="widget-title">Título del componente</label>
+                <input
+                  id="widget-title"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  maxLength={160}
+                />
+              </div>
+              <div>
+                <label htmlFor="widget-chart">Tipo de vista</label>
+                <select
+                  id="widget-chart"
+                  value={chart}
+                  onChange={(e) => setChart(e.target.value as Widget["chart"])}
+                >
+                  <option value="line">Línea</option>
+                  <option value="bar">Barras</option>
+                  <option value="table">Tabla</option>
+                  <option value="kpi">Resumen</option>
+                </select>
+              </div>
+            </div>
+            <div className="form-actions">
+              <button
+                className="button outline"
+                disabled={!runId || !title.trim() || widgets.length >= 12}
+                onClick={() => {
+                  setWidgets([...widgets, { run_id: runId, title, chart }]);
+                  setTitle("");
+                }}
+              >
+                Añadir componente
+              </button>
+              <button
+                className="button primary"
+                disabled={name.trim().length < 3 || widgets.length === 0}
+                onClick={() =>
+                  workspace
+                    .saveDashboard(name, widgets, selected?.id)
+                    .then((d) => {
+                      setSelected(d);
+                      return load();
+                    })
+                    .catch((e) => setError(e.message))
+                }
+              >
+                Guardar tablero
+              </button>
+            </div>
+          </>
+        )}
+      </section>
+      <div className="dashboard-grid">
+        {widgets.map((w, i) => {
+          const r = runs.find((r) => r.id === w.run_id);
+          return (
+            <section className="panel" key={`${w.run_id}-${i}`}>
+              <div className="panel-header">
+                <h2>{w.title}</h2>
+                {user?.role !== "viewer" && (
+                  <button
+                    className="button outline small"
+                    aria-label={`Quitar ${w.title}`}
+                    onClick={() =>
+                      setWidgets(widgets.filter((_, j) => j !== i))
+                    }
+                  >
+                    Quitar
+                  </button>
+                )}
+              </div>
+              {r ? (
+                <ResultView run={r} chart={w.chart} />
+              ) : (
+                <p>Cargando resultado…</p>
+              )}
+            </section>
+          );
+        })}
+      </div>
+    </div>
+  );
 }

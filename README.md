@@ -56,7 +56,7 @@ En Windows usa el ejecutable backend\.venv\Scripts\python.exe sin activar el ent
 
 ## Docker Compose / PostgreSQL
 
-**Preparado, pendiente de ejecución en un equipo con Docker.** No se instaló Docker ni se desplegó infraestructura externa.
+**PostgreSQL 17.11 verificado localmente**, incluidas migraciones, cálculo, navegador y respaldo/restauración. La configuración de contenedores Compose sigue pendiente de ejecución: no se instaló Docker ni se desplegó infraestructura externa.
 
 1. Copia .env.example a .env.
 2. Define SII_MB_DB_PASSWORD (aleatoria, caracteres seguros para URL) y SII_MB_ADMIN_PASSWORD (distinta, al menos 12 caracteres).
@@ -86,7 +86,7 @@ El ejemplo solo prepara datos en el formulario: nada se precarga al arrancar.
 
 Por separado: `python -m pytest -q` desde backend; `npm run typecheck`, `npm run build`, `npx playwright test` desde frontend. E2E inicia sus propios servidores 8100/3100 y una base sintética independiente.
 
-Linux/Chromium: `npx playwright install chromium` y SII_MB_BROWSER_CHANNEL=chromium. PostgreSQL: SII_MB_TEST_POSTGRES_URL debe apuntar a una base local dedicada a pruebas; se crea/elimina únicamente un esquema test_sii_UUID. E2E puede usar SII_MB_TEST_DATABASE_URL hacia una base vacía de pruebas; nunca apuntar a una base de usuarios reales.
+Linux/Chromium: `npx playwright install chromium` y SII_MB_BROWSER_CHANNEL=chromium. PostgreSQL: SII_MB_TEST_POSTGRES_URL debe apuntar a una base local dedicada a pruebas; cada caso utiliza un esquema test_sii_UUID. Para probar respaldo/restauración define también SII_MB_PG_BIN con el directorio de pg_dump/pg_restore; se crea y elimina exclusivamente una base test_sii_restore_UUID. E2E puede usar SII_MB_TEST_DATABASE_URL hacia una base vacía de pruebas; nunca apuntar a una base de usuarios reales.
 
 GitHub Actions requiere ejecución manual; publicar código no activa trabajos ni despliegues.
 
@@ -94,8 +94,8 @@ GitHub Actions requiere ejecución manual; publicar código no activa trabajos n
 
 [Hitos](docs/PLAN_IMPLEMENTACION.md) · [Verificación](docs/VERIFICACION_V02.md) · [Motor](docs/MOTOR.md) · [Operación](docs/OPERACION.md) · [Reglas originales](docs/REGLAS_MAESTRAS.md) · [Instrucciones originales](docs/INSTRUCCIONES_DESARROLLO.md) · [Trazabilidad DEC](docs/TRAZABILIDAD_DEC.md).
 
-Arquitectura: Next.js/React/TypeScript; FastAPI/SQLAlchemy; Alembic; SQLite para pruebas locales, PostgreSQL como entorno de referencia preparado. Gráficas SVG accesibles sin una biblioteca externa adicional. backend/app/connectors.py define la frontera para adaptadores futuros de confianza.
+Arquitectura: Next.js/React/TypeScript; FastAPI/SQLAlchemy; Alembic; SQLite y PostgreSQL verificados. Gráficas SVG accesibles sin una biblioteca externa adicional. backend/app/connectors.py define la frontera para adaptadores futuros de confianza.
 
 ## Alcance pendiente
 
-PostgreSQL/Compose ejecutados, restauración comprobada, carga/concurrencia, recuperación de cuentas, HTTPS/SSO y revisión de seguridad institucional. Gobernanza avanzada EM/EV/EVT/PO y criticidad se incorporarán progresivamente. Tampoco se incluyen conectores institucionales reales, trabajos asíncronos ni tableros compartidos. El rol técnico admin no confiere autoridad metodológica institucional. No se han usado datos reales ni desplegado servicios en nube.
+Ejecución de contenedores Compose, carga/concurrencia, restauración conforme al procedimiento institucional definitivo, recuperación de cuentas, HTTPS/SSO y revisión de seguridad institucional. La recuperación sintética en PostgreSQL ya fue verificada. Gobernanza avanzada EM/EV/EVT/PO y criticidad se incorporarán progresivamente. Tampoco se incluyen conectores institucionales reales, trabajos asíncronos ni tableros compartidos. El rol técnico admin no confiere autoridad metodológica institucional. No se han usado datos reales ni desplegado servicios en nube.

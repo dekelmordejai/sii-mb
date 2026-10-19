@@ -20,6 +20,8 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install -r backend/requirements-lock.txt
+      - run: python -m ruff check app tests alembic
+        working-directory: backend
       - run: python -m pytest -q
         working-directory: backend
         env:
